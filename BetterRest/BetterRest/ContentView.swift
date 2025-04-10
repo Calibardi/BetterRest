@@ -25,6 +25,10 @@ struct ContentView: View {
         return Calendar.current.date(from: components) ?? .now
     }
     
+    private var bedtime: String {
+        return calculateBedtime()
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -54,13 +58,27 @@ struct ContentView: View {
                         Stepper("\(sleepAmount.formatted()) hours", value: $sleepAmount, in: 4...12, step: 0.25)
                     }
                     
-                    VStack(alignment: .leading, spacing: 0){
+                    Picker(selection: $coffeeAmount) {
+                        ForEach(1...12, id: \.self) {
+                            Text("^[\($0) cup](inflect: true)")
+                        }
+                    } label: {
                         Text("Daily coffee intake")
                             .font(.headline)
-                        
-                        Stepper("^[\(coffeeAmount) cup](inflect: true)", value: $coffeeAmount, in: 1...20)
                     }
                     
+                    Section {
+                        HStack {
+                            Spacer()
+                            Text(bedtime)
+                                .font(.largeTitle)
+                            Spacer()
+                        }
+                        .frame(height: 100)
+                    } header: {
+                        Text("Ideal bed time")
+                            .font(.headline)
+                    }
                 }
                 .scrollContentBackground(.hidden)
                 .navigationTitle("BetterRest")
@@ -69,15 +87,12 @@ struct ContentView: View {
                 } message: {
                     Text(alertMessage)
                 }
-                .toolbar {
-                    Button("Calculate", action: calculateBedtime)
-                }
                 .padding()
             }
         }
     }
     
-    private func calculateBedtime() {
+    private func calculateBedtime() -> String {
         do {
             let config = MLModelConfiguration()
             let model = try SleepCalculator(configuration: config)
@@ -88,17 +103,14 @@ struct ContentView: View {
                 coffee: Double(coffeeAmount))
             
             let sleepTime: Date = wakeUp - prediction.actualSleep
-            
-            alertTitle = "Your ideal bedtime is.."
-            alertMessage = sleepTime.formatted(date: .omitted, time: .shortened)
+            return sleepTime.formatted(date: .omitted, time: .shortened)
             
         } catch(let error) {
             alertTitle = "Error!"
             alertMessage = error.localizedDescription
+            shouldShowAlert = true
+            return ""
         }
-        
-        shouldShowAlert = true
-
     }
     
     private func getWakeUpTime() -> Double {
